@@ -2,52 +2,80 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
-using Unity.Mathematics;
+using UnityEngine.UIElements;
 
 public class Circle : MonoBehaviour
 {
+    //Circle properties
+    [Range(0, 10)]
     public float radius = 1f;
     public int segments = 100;
-    public Vector2 boundsSize = new Vector2(10,10);
-    public float collisionDampening = 0;
-    private MeshFilter meshFilter;
+    public float collisionDampening = 0.82f;
+
+    //Circles properties
+    private Vector3[] velocity;
+    private Vector3[] positions;
+    public int particleCount = 1;
+
+    //Our universe properties
+    public float gravity = 9.81f;
+    public Vector2 boundsSize = new Vector2(10, 10);
+
+
+    private Mesh mesh;
+    RenderParams rp;
+
     public Material material;
-    public float gravity = -9.81f;
-    Vector3 velocity;
-    Vector3 position;
 
     void Start()
     {
-        meshFilter = gameObject.AddComponent<MeshFilter>();
-        MeshRenderer renderer = gameObject.AddComponent<MeshRenderer>();
+        positions = new Vector3[particleCount];
+        velocity = new Vector3[particleCount];
 
-        meshFilter.mesh = CreateCircleMesh(radius, segments);
-        renderer.material = material;
+        float minX = boundsSize.x / 2 * -1 + radius;
+        float maxX = boundsSize.x / 2 - radius;
+
+        float minY = boundsSize.y / 2 * -1 + radius;
+        float maxY = boundsSize.y / 2 - radius;
+
+        for (int i = 0; i < particleCount; i++)
+        {
+            positions[i] = new Vector3(Random.Range(minX, maxX), Random.Range(minY, maxY), 0);    
+        }
+
+        mesh = CreateCircleMesh(radius, segments);
+        rp = new RenderParams(material);
     }
 
     void Update()
     {
-        ResolveCollision();
+        for (int i = 0; i < positions.Length; i++)
+        {
+            ResolveCollision(i);
 
-        velocity += Vector3.down * gravity * Time.deltaTime;
-        position += velocity * Time.deltaTime;
-        gameObject.transform.position = position;
+            velocity[i] += Vector3.down * gravity * Time.deltaTime;
+            positions[i] += velocity[i] * Time.deltaTime;
+            Graphics.RenderMesh(rp, mesh, 0, Matrix4x4.Translate(positions[i]));
+        }
+
+        mesh = CreateCircleMesh(radius, segments);
+
     }
 
-    void ResolveCollision()
+    void ResolveCollision(int arrayPosition)
     {
         Vector2 halfBoundSize = boundsSize / 2 - Vector2.one * radius;
 
-        if(Mathf.Abs(position.x) > halfBoundSize.x)
+        if (Mathf.Abs(positions[arrayPosition].x) > halfBoundSize.x)
         {
-            position.x = halfBoundSize.x * Mathf.Sign(position.x);
-            velocity.x *= -1 * collisionDampening;
+            positions[arrayPosition].x = halfBoundSize.x * Mathf.Sign(positions[arrayPosition].x);
+            velocity[arrayPosition].x *= -1 * collisionDampening;
         }
 
-        if (Mathf.Abs(position.y) > halfBoundSize.y)
+        if (Mathf.Abs(positions[arrayPosition].y) > halfBoundSize.y)
         {
-            position.y = halfBoundSize.y * Mathf.Sign(position.y);
-            velocity.y *= -1 * collisionDampening;
+            positions[arrayPosition].y = halfBoundSize.y * Mathf.Sign(positions[arrayPosition].y);
+            velocity[arrayPosition].y *= -1 * collisionDampening;
         }
     }
 
@@ -56,7 +84,7 @@ public class Circle : MonoBehaviour
         // Draw a yellow sphere at the transform's position
         Gizmos.color = Color.yellow;
         Vector3 size = boundsSize;
-        Gizmos.DrawWireCube(new Vector3(0,0,0), size);
+        Gizmos.DrawWireCube(new Vector3(0, 0, 0), size);
     }
 
     Mesh CreateCircleMesh(float radius, int segments)
