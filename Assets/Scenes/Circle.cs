@@ -161,7 +161,7 @@ public class Circle : MonoBehaviour
         {
             Vector3 pressureForce = -CalculatePressureForce(i);
             Vector3 pressureAcceleration = pressureForce / densities[i];
-            velocity[i] += pressureAcceleration * deltaTime;
+            velocity[i] = pressureAcceleration * deltaTime;
         });
 
         Parallel.For(0, particleCount, i =>
