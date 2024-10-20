@@ -308,7 +308,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 20
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -384,19 +384,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   radius: 0.1
-  smoothingRadius: 0.5
-  segments: 100
+  smoothingRadius: 1
+  segments: 40
   collisionDampening: 0.82
   density: 0
-  samplePoint: {x: 0, y: 0}
   targetDensity: 2.75
   pressureMultiplier: 0.5
   deltaTime: 0.001
   mass: 1
   densities: []
-  particleCount: 40
-  gravity: 9.81
-  boundsSize: {x: 10, y: 10}
+  particleCount: 1500
+  gravity: 0
+  boundsSize: {x: 40, y: 40}
   material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

@@ -22,7 +22,8 @@ public class Circle : MonoBehaviour
     public float targetDensity;
     public float pressureMultiplier;
 
-    public float deltaTime = 1f;
+    [Range(0.001f, 0.1f)]
+    public float deltaTime = 0.001f;
 
     public float mass = 1.0f;
 
@@ -73,6 +74,7 @@ public class Circle : MonoBehaviour
             if (i == particleIndex) continue;
             Vector3 offset = positions[i] - positions[particleIndex];
             float dst = offset.magnitude;
+            if (dst > smoothingRadius) continue;
             Vector2 dir = dst == 0 ? new Vector2(1,0) : offset / dst;
             float slope = SmoothingKernelDerivative(dst, smoothingRadius);
             float density = densities[i];
@@ -97,19 +99,20 @@ public class Circle : MonoBehaviour
         return pressure;
     }
 
-    float SmoothingKernel(float radius, float density)
+    float SmoothingKernel(float radius, float distance)
     {
-        float volume = Mathf.PI * Mathf.Pow(radius, 8) / 4;
-        float value = Mathf.Max(0, radius*radius - density*density);
-        return value * value * value / volume;
+        if (distance >= radius) return 0;
+
+        float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
+        return (radius - distance) * (radius - distance) / volume;
     }
 
     static float SmoothingKernelDerivative(float dst, float radius)
     {
         if (dst >= radius) return 0;
-        float f = radius * radius - dst * dst;
-        float scale = -24 / (Mathf.PI * Mathf.Pow(radius, 8));
-        return scale * dst * f * f;
+
+        float scale = 12 / (Mathf.PI * Mathf.Pow(radius, 4));
+        return (dst - radius) * scale;
     }
 
     float CalculateDensity(Vector3 particlePosition)
@@ -161,7 +164,7 @@ public class Circle : MonoBehaviour
         {
             Vector3 pressureForce = -CalculatePressureForce(i);
             Vector3 pressureAcceleration = pressureForce / densities[i];
-            velocity[i] = pressureAcceleration * deltaTime;
+            velocity[i] += pressureAcceleration * deltaTime;
         });
 
         Parallel.For(0, particleCount, i =>
