@@ -122,37 +122,6 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &243361724
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 243361726}
-  m_Layer: 0
-  m_Name: SamplePoint
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &243361726
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 243361724}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0
@@ -308,7 +277,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 20
+  orthographic size: 5
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -350,7 +319,7 @@ GameObject:
   - component: {fileID: 1865793207}
   - component: {fileID: 1865793208}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: Simulation
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -383,8 +352,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 971771a80721b7642be91ee86e99de0b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  drawGizmosBoundry: 1
+  drawGizmosGrid: 0
   radius: 0.1
-  smoothingRadius: 1
+  smoothingRadius: 0.5
   segments: 40
   collisionDampening: 0.82
   density: 0
@@ -393,10 +364,10 @@ MonoBehaviour:
   deltaTime: 0.001
   mass: 1
   densities: []
-  particleCount: 1500
+  particleCount: 400
   gravity: 0
-  boundsSize: {x: 40, y: 40}
-  material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
+  boundsSize: {x: 10, y: 10}
+  material: {fileID: 2100000, guid: 03c589b182136ed4f92d9f6e3e3b9e7b, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -404,4 +375,3 @@ SceneRoots:
   - {fileID: 963194228}
   - {fileID: 705507995}
   - {fileID: 1865793207}
-  - {fileID: 243361726}

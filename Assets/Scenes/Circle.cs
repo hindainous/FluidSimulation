@@ -10,6 +10,10 @@ using System.Threading.Tasks;
 
 public class Circle : MonoBehaviour
 {
+    //Gizmos 
+    public bool drawGizmosBoundry = true;
+    public bool drawGizmosGrid = true;
+
     //Circle properties
     [Range(0, 10)]
     public float radius = 0.1f;
@@ -78,10 +82,18 @@ public class Circle : MonoBehaviour
             Vector2 dir = dst == 0 ? new Vector2(1,0) : offset / dst;
             float slope = SmoothingKernelDerivative(dst, smoothingRadius);
             float density = densities[i];
-            pressureForce += -ConvertDensityToPressure(density) * dir * slope * mass / density;
+            float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
+            pressureForce += -sharedPressure * dir * slope * mass / density;
         }
 
         return pressureForce;
+    }
+
+    float CalculateSharedPressure(float densityA, float densityB)
+    {
+        float pressureA = ConvertDensityToPressure(densityA);
+        float pressureB = ConvertDensityToPressure(densityB);
+        return (pressureA + pressureB) / 2;
     }
 
     void UpdateDensities()
@@ -132,24 +144,14 @@ public class Circle : MonoBehaviour
     void Update()
     {
         SimulationStep(deltaTime);
-        /*for (int i = 0; i < positions.Length; i++)
-        {
-            ResolveCollision(i);
 
-            velocity[i] += Vector3.down * gravity * Time.deltaTime;
-            positions[i] += velocity[i] * Time.deltaTime;
-            Graphics.RenderMesh(rp, mesh, 0, Matrix4x4.Translate(positions[i]));
-        }*/
-
-        for(int i = 0; i < particleCount; i++)
+        for (int i = 0; i < particleCount; i++)
         {
-            Graphics.RenderMesh(rp, mesh, 0, Matrix4x4.Translate(positions[i]));
+            Material material2 = material;
+            material2.SetFloat("_ColorParameter", velocity[i].magnitude);
+            RenderParams rp2 = new RenderParams(material2);
+            Graphics.RenderMesh(rp2, mesh, 0, Matrix4x4.Translate(positions[i]));
         }
-
-        //density = CalculateDensity();
-
-        //mesh = CreateCircleMesh(radius, segments);
-
     }
 
     void SimulationStep(float deltaTime)
@@ -193,10 +195,46 @@ public class Circle : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        // Draw a yellow sphere at the transform's position
-        Gizmos.color = Color.yellow;
         Vector3 size = boundsSize;
-        Gizmos.DrawWireCube(new Vector3(0, 0, 0), size);
+        if (drawGizmosBoundry == true)
+        {
+            // Draw a yellow sphere at the transform's position
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(new Vector3(0, 0, 0), size);
+        }
+
+        if(drawGizmosGrid == true)
+        {
+            Vector3 cellSize = new Vector3(smoothingRadius * 2, smoothingRadius * 2);
+            Gizmos.color = Color.green;
+
+            for (int i = 0; i < boundsSize.x; i++)
+            {
+                for(int j = 0; j < boundsSize.y; j++)
+                {
+                    Gizmos.DrawWireCube(new Vector3(i - (boundsSize.x / 2) + smoothingRadius, j - (boundsSize.y / 2) + smoothingRadius, 0), cellSize);
+                }
+            }
+        }
+    }
+
+    public (int x, int y) CellCord(Vector3 point)
+    { 
+        int cellX = (int)Mathf.Floor(-point.x / (smoothingRadius * 2));
+        int cellY = (int)Mathf.Floor(point.y / (smoothingRadius * 2));
+        return (cellX, cellY);
+    }
+
+    public uint HashKey(int x, int y)
+    {
+        uint a = (uint)x * 103387;
+        uint b = (uint)y * 96763;
+        return a + b;
+    }
+
+    public uint CellKey(uint hash)
+    {
+        return hash % (uint)positions.Length;
     }
 
     Mesh CreateCircleMesh(float radius, int segments)
