@@ -355,19 +355,20 @@ MonoBehaviour:
   drawGizmosBoundry: 1
   drawGizmosGrid: 0
   radius: 0.1
-  smoothingRadius: 0.5
-  segments: 40
+  smoothingRadius: 0.35
+  segments: 10
   collisionDampening: 0.82
-  density: 0
-  targetDensity: 2.75
-  pressureMultiplier: 0.5
+  targetDensity: 10
+  pressureMultiplier: 10
   deltaTime: 0.001
   mass: 1
+  RandomX: 1
+  RandomY: 1
   densities: []
-  particleCount: 400
+  particleCount: 600
   gravity: 0
-  boundsSize: {x: 10, y: 10}
-  material: {fileID: 2100000, guid: 03c589b182136ed4f92d9f6e3e3b9e7b, type: 2}
+  boundsSize: {x: 16, y: 10}
+  material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

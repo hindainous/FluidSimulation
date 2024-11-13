@@ -21,20 +21,21 @@ public class Circle : MonoBehaviour
     public int segments = 100;
     public float collisionDampening = 0.82f;
 
-    public float density = 0f;
-
     public float targetDensity;
     public float pressureMultiplier;
 
-    [Range(0.001f, 0.1f)]
-    public float deltaTime = 0.001f;
+    [Range(0.0001f, 0.1f)]
+    public float deltaTime = 0.0001f;
 
     public float mass = 1.0f;
+    public float RandomX = 1.0f;
+    public float RandomY = 1.0f;
 
     //Circles properties
     public float[] densities;
     private Vector3[] velocity;
     private Vector3[] positions;
+    private Vector3[] predictedPositions;
     public int particleCount = 1;
 
     //Our universe properties
@@ -51,8 +52,12 @@ public class Circle : MonoBehaviour
     {
         positions = new Vector3[particleCount];
         velocity = new Vector3[particleCount];
+        predictedPositions = new Vector3[particleCount];
 
         densities = new float[particleCount];
+
+        RandomX = Random.Range(-0.5f, 0.5f);
+        RandomY = Random.Range(-0.5f, 0.5f);
 
         float minX = boundsSize.x / 2 * -1 + radius;
         float maxX = boundsSize.x / 2 - radius;
@@ -79,11 +84,11 @@ public class Circle : MonoBehaviour
             Vector3 offset = positions[i] - positions[particleIndex];
             float dst = offset.magnitude;
             if (dst > smoothingRadius) continue;
-            Vector2 dir = dst == 0 ? new Vector2(1,0) : offset / dst;
+            Vector2 dir = dst == 0 ? new Vector2(RandomX, RandomY) : offset / dst;
             float slope = SmoothingKernelDerivative(dst, smoothingRadius);
             float density = densities[i];
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
-            pressureForce += -sharedPressure * dir * slope * mass / density;
+            pressureForce += sharedPressure * dir * slope * mass / density;
         }
 
         return pressureForce;
@@ -107,7 +112,7 @@ public class Circle : MonoBehaviour
     float ConvertDensityToPressure(float density)
     {
         float densityError = density - targetDensity;
-        float pressure = density * pressureMultiplier;
+        float pressure = densityError * pressureMultiplier;
         return pressure;
     }
 
@@ -147,9 +152,8 @@ public class Circle : MonoBehaviour
 
         for (int i = 0; i < particleCount; i++)
         {
-            Material material2 = material;
-            material2.SetFloat("_ColorParameter", velocity[i].magnitude);
-            RenderParams rp2 = new RenderParams(material2);
+
+            RenderParams rp2 = new RenderParams(material);
             Graphics.RenderMesh(rp2, mesh, 0, Matrix4x4.Translate(positions[i]));
         }
     }
@@ -159,12 +163,17 @@ public class Circle : MonoBehaviour
         Parallel.For(0, particleCount, i =>
         {
             velocity[i] += Vector3.down * gravity * deltaTime;
-            densities[i] = CalculateDensity(positions[i]);
+            predictedPositions[i] = positions[i] + velocity[i] * deltaTime;
+        });
+
+        Parallel.For(0, particleCount, i =>
+        {
+            densities[i] = CalculateDensity(predictedPositions[i]);
         });
         
         Parallel.For(0, particleCount, i =>
         {
-            Vector3 pressureForce = -CalculatePressureForce(i);
+            Vector3 pressureForce = CalculatePressureForce(i);
             Vector3 pressureAcceleration = pressureForce / densities[i];
             velocity[i] += pressureAcceleration * deltaTime;
         });
