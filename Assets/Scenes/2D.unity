@@ -273,7 +273,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.000000001
   far clip plane: 1000
   field of view: 60
   orthographic: 1
@@ -353,20 +353,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timeScale: 1
-  iterationsPerFrame: 3
+  iterationsPerFrame: 1
   drawGizmosBoundry: 1
   drawGizmosGrid: 0
   circleRadius: 0.1
-  smoothingRadius: 1.25
+  smoothingRadius: 0.8
   segments: 10
   collisionDampening: 0.82
   targetDensity: 5
-  pressureMultiplier: 20
+  viscosityStrength: 0.05
+  pressureMultiplier: 500
   mass: 1
-  startIndices: 
-  particleCount: 800
-  gravity: 0
-  boundsSize: {x: 20, y: 20}
+  particleCount: 1000
+  gravity: 12
+  boundsSize: {x: 25, y: 20}
   material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
