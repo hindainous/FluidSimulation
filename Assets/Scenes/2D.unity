@@ -318,6 +318,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1865793207}
   - component: {fileID: 1865793208}
+  - component: {fileID: 1865793209}
   m_Layer: 0
   m_Name: Simulation
   m_TagString: Untagged
@@ -355,19 +356,34 @@ MonoBehaviour:
   timeScale: 1
   iterationsPerFrame: 1
   drawGizmosBoundry: 1
-  drawGizmosGrid: 0
   circleRadius: 0.1
   smoothingRadius: 0.8
   segments: 10
   collisionDampening: 0.82
   targetDensity: 5
-  viscosityStrength: 0.05
-  pressureMultiplier: 500
+  viscosityStrength: 0
+  pressureMultiplier: 0
   mass: 1
   particleCount: 1000
-  gravity: 12
+  gravity: 0
   boundsSize: {x: 25, y: 20}
   material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
+--- !u!114 &1865793209
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1865793206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ff670422016f254fa135cf0b662caff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  drawGizmosGrid: 1
+  Simulation: {fileID: 1865793206}
+  startIndices: 
+  getItems: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

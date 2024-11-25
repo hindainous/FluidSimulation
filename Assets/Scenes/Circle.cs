@@ -22,7 +22,6 @@ public class Circle : MonoBehaviour
 
     //Gizmos 
     public bool drawGizmosBoundry = true;
-    public bool drawGizmosGrid = true;
     Tuple<int, int>[] cellOffsets = new Tuple<int, int>[]
     {
         Tuple.Create(-1, 1),
@@ -51,7 +50,6 @@ public class Circle : MonoBehaviour
     //Circles properties
     private float[] densities;
     private int[] startIndices;
-    private Entry[] spatialLookup;
     private Vector3[] velocity;
     private Vector3[] points;
     private Matrix4x4[] positionsMatrices;
@@ -69,6 +67,11 @@ public class Circle : MonoBehaviour
 
     public Material material;
 
+    public Vector3[] getPositions()
+    {
+        return positions;
+    }
+
     void Start()
     {
         positions = new Vector3[particleCount];
@@ -76,7 +79,6 @@ public class Circle : MonoBehaviour
         positionsMatrices = new Matrix4x4[particleCount];
         predictedPositions = new Vector3[particleCount];
         points = new Vector3[particleCount];
-        spatialLookup = new Entry[particleCount];
         startIndices = new int[particleCount];
 
         densities = new float[particleCount];
@@ -106,8 +108,6 @@ public class Circle : MonoBehaviour
             shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off,
             receiveShadows = false
         };
-
-        UpdateSpatialLookUp(positions, smoothingRadius);
     }
 
     Vector2 CalculatePressureForce(int particleIndex)
@@ -251,11 +251,7 @@ public class Circle : MonoBehaviour
             predictedPositions[i] = positions[i] + velocity[i] * 1 / 120f;
         });
 
-        //UpdateSpatialLookUp(predictedPositions, smoothingRadius);
-
-
         UpdateDensities();
-
 
         Parallel.For(0, particleCount, i =>
         {
@@ -272,68 +268,6 @@ public class Circle : MonoBehaviour
             positions[i] += velocity[i] * deltaTime;
             ResolveCollision(i);
         });
-    }
-
-    public void UpdateSpatialLookUp(Vector3[] points, float radius)
-    {
-        this.points = points;
-
-        Parallel.For(0, points.Length, i =>
-        {
-            (int cellX, int cellY) = PositionToCellCoord(points[i], radius);
-            uint cellKey = CellKeyFromHash(HashCell(cellX, cellY));
-            spatialLookup[i] = new Entry(i, cellKey);
-            startIndices[i] = int.MaxValue;
-        });
-
-        Array.Sort(spatialLookup);
-
-        Parallel.For(0, points.Length, i =>
-        {
-            uint key = spatialLookup[i].cellKey;
-            uint keyPrev = i == 0 ? uint.MaxValue : spatialLookup[i - 1].cellKey;
-            if (key != keyPrev)
-            {
-                startIndices[key] = i;
-            }
-        });
-    }
-
-    public (int x, int y) PositionToCellCoord(Vector3 point, float radius)
-    {
-        int cellX = (int)(point.x / radius);
-        int cellY = (int)(point.y / radius);
-        return (cellX, cellY);
-    }
-
-    public void ForeachPointWithinRadius(Vector3 samplePoint, int ourIndex)
-    {
-        (int centreX, int centreY) = PositionToCellCoord(samplePoint, circleRadius);
-        float sqrRadius = circleRadius * circleRadius;
-
-        float density = 0;
-        foreach ((int offsetX, int offsetY) in cellOffsets)
-        {
-            uint key = CellKeyFromHash(HashCell(centreX + offsetX, centreY + offsetY));
-            int cellStartIndex = startIndices[key];
-
-            for (int i = cellStartIndex; i < spatialLookup.Length; i++)
-            {
-                if (spatialLookup[i].cellKey != key) break;
-
-                int particleIndex = spatialLookup[i].num;
-                float sqrDst = (points[particleIndex] - samplePoint).sqrMagnitude;
-                if (sqrDst <= sqrRadius)
-                {
-                    float dst = (samplePoint - positions[particleIndex]).magnitude;
-                    Debug.Log("Distance" + sqrDst + ", asd " + sqrRadius);
-                    float influence = SmoothingKernel(smoothingRadius, dst);
-                    density += mass * influence;
-                }
-            }
-        }
-
-        densities[ourIndex] = density;
     }
 
     void ResolveCollision(int arrayPosition)
@@ -362,39 +296,6 @@ public class Circle : MonoBehaviour
             Gizmos.color = UnityEngine.Color.yellow;
             Gizmos.DrawWireCube(new Vector3(0, 0, 0), size);
         }
-
-        if(drawGizmosGrid == true)
-        {
-            Vector3 cellSize = new Vector3(smoothingRadius * 2, smoothingRadius * 2);
-            Gizmos.color = UnityEngine.Color.green;
-
-            for (int i = 0; i < boundsSize.x; i++)
-            {
-                for(int j = 0; j < boundsSize.y; j++)
-                {
-                    Gizmos.DrawWireCube(new Vector3(i - (boundsSize.x / 2) + smoothingRadius, j - (boundsSize.y / 2) + smoothingRadius, 0), cellSize);
-                }
-            }
-        }
-    }
-
-    public (int x, int y) CellCord(Vector3 point)
-    { 
-        int cellX = (int)Mathf.Floor(-point.x / (smoothingRadius * 2));
-        int cellY = (int)Mathf.Floor(point.y / (smoothingRadius * 2));
-        return (cellX, cellY);
-    }
-
-    public uint HashCell(int x, int y)
-    {
-        uint a = (uint)x * 103387;
-        uint b = (uint)y * 96763;
-        return a + b;
-    }
-
-    public uint CellKeyFromHash(uint hash)
-    {
-        return hash % (uint)spatialLookup.Length;
     }
 
     Mesh CreateCircleMesh(float radius, int segments)
@@ -427,50 +328,4 @@ public class Circle : MonoBehaviour
 
         return mesh;
     }
-}
-
-public struct Entry : IComparable<Entry>
-{
-    public Entry(int x, uint y)
-    {
-        num = x;
-        cellKey = y;
-    }
-
-    public int num { get; }
-    public uint cellKey { get; }
-
-    public int CompareTo(Entry other)
-    {
-        // Example: Compare based on the X coordinate first, then Y coordinate
-        if (num != other.num)
-        {
-            return num.CompareTo(other.num);
-        }
-        return cellKey.CompareTo(other.cellKey);
-    }
-
-    // Override Equals for value-based equality
-    public override bool Equals(object obj)
-    {
-        if (obj is Entry other)
-        {
-            return num == other.num && cellKey == other.cellKey;
-        }
-        return false;
-    }
-
-    // Override GetHashCode
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(num, cellKey);
-    }
-
-    // Overload comparison operators
-    public static bool operator ==(Entry p1, Entry p2) => p1.Equals(p2);
-    public static bool operator !=(Entry p1, Entry p2) => !p1.Equals(p2);
-    public static bool operator <(Entry p1, Entry p2) => p1.CompareTo(p2) < 0;
-    public static bool operator >(Entry p1, Entry p2) => p1.CompareTo(p2) > 0;
-    public static bool operator <=(Entry p1, Entry p2) => p1.CompareTo(p2) <= 0;
-    public static bool operator >=(Entry p1, Entry p2) => p1.CompareTo(p2) >= 0;
 }

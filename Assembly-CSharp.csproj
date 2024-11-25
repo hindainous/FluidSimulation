@@ -61,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scenes\Circle.cs" />
+    <Compile Include="Assets\Scenes\NeighbourSearch.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">
