@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Drawing;
 using UnityEngine.SocialPlatforms;
+using static UnityEngine.EventSystems.EventTrigger;
+using static UnityEditor.Progress;
 
 public class Circle : MonoBehaviour
 {
@@ -19,6 +21,7 @@ public class Circle : MonoBehaviour
     public int iterationsPerFrame;
     float deltaTime = 0.0001f;
 
+    public bool get = false;
 
     //Gizmos 
     public bool drawGizmosBoundry = true;
@@ -57,6 +60,8 @@ public class Circle : MonoBehaviour
     private Vector3[] predictedPositions;
     public int particleCount = 1;
 
+    public NeighbourSearch fixedNeighbour;
+
     //Our universe properties
     public float gravity = 9.81f;
     public Vector2 boundsSize = new Vector2(10, 10);
@@ -74,6 +79,7 @@ public class Circle : MonoBehaviour
 
     void Start()
     {
+        fixedNeighbour = GetComponent<NeighbourSearch>();
         positions = new Vector3[particleCount];
         velocity = new Vector3[particleCount];
         positionsMatrices = new Matrix4x4[particleCount];
@@ -108,6 +114,8 @@ public class Circle : MonoBehaviour
             shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off,
             receiveShadows = false
         };
+
+        fixedNeighbour.UpdateGridSorting(positions, smoothingRadius, true);
     }
 
     Vector2 CalculatePressureForce(int particleIndex)
@@ -141,6 +149,7 @@ public class Circle : MonoBehaviour
     {
         Parallel.For(0, particleCount, i =>
         {
+            //InsideRadiusInfluenceDensity(positions[i], i);
             //ForeachPointWithinRadius(positions[i], i);
             densities[i] = CalculateDensity(predictedPositions[i], i);
         });
@@ -225,6 +234,12 @@ public class Circle : MonoBehaviour
 
     void Update()
     {
+        if(get)
+        {
+            fixedNeighbour.UpdateGridSorting(positions, smoothingRadius, false);
+            get = false;
+        }
+
         if (Time.frameCount > 10)
         {
             RunSimulationFrame(Time.deltaTime);
@@ -250,6 +265,13 @@ public class Circle : MonoBehaviour
             velocity[i] += Vector3.down * gravity * deltaTime;
             predictedPositions[i] = positions[i] + velocity[i] * 1 / 120f;
         });
+
+        fixedNeighbour.UpdateGridSorting(predictedPositions, smoothingRadius, false);
+
+        for(int i = 0;i < particleCount; i++)
+        {
+            InsideRadiusInfluenceDensity(predictedPositions[i], i);
+        }
 
         UpdateDensities();
 
@@ -284,6 +306,31 @@ public class Circle : MonoBehaviour
         {
             positions[arrayPosition].y = halfBoundSize.y * Mathf.Sign(positions[arrayPosition].y);
             velocity[arrayPosition].y *= -1 * collisionDampening;
+        }
+    }
+
+    public void InsideRadiusInfluenceDensity(Vector3 point, int myIndex)
+    {
+        GridItem gridItem = fixedNeighbour.FindGridCell(point);
+        foreach ((int offsetX, int offsetY) in cellOffsets)
+        {
+            uint key = fixedNeighbour.GetCellKey(fixedNeighbour.HashCell(gridItem.coordX + offsetX, gridItem.coordY + offsetY));
+            int cellStartIndex = startIndices[key];
+
+            for (int i = cellStartIndex; i < fixedNeighbour.gridLookup.Length; i++)
+            {
+                if (fixedNeighbour.gridLookup[i].cellKey != key) break;
+
+                int particleIndex = fixedNeighbour.gridLookup[i].particleIndex;
+                if(particleIndex == myIndex) 
+                    continue;
+
+                float sqrDst = (points[particleIndex] - point).sqrMagnitude;
+                if (sqrDst <= smoothingRadius * smoothingRadius)
+                {
+                    Debug.Log("I say :" + myIndex + " he is in here: " + particleIndex);
+                }
+            }
         }
     }
 

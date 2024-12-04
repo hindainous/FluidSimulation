@@ -355,6 +355,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   timeScale: 1
   iterationsPerFrame: 1
+  get: 0
   drawGizmosBoundry: 1
   circleRadius: 0.1
   smoothingRadius: 0.8
@@ -364,7 +365,8 @@ MonoBehaviour:
   viscosityStrength: 0
   pressureMultiplier: 0
   mass: 1
-  particleCount: 1000
+  particleCount: 2
+  fixedNeighbour: {fileID: 0}
   gravity: 0
   boundsSize: {x: 25, y: 20}
   material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
@@ -382,8 +384,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drawGizmosGrid: 1
   Simulation: {fileID: 1865793206}
+  points: []
+  radius: 0
   startIndices: 
-  getItems: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
