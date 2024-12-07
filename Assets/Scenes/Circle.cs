@@ -10,10 +10,7 @@ using System;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Drawing;
-using UnityEngine.SocialPlatforms;
-using static UnityEngine.EventSystems.EventTrigger;
-using static UnityEditor.Progress;
-
+using UnityEngine.SceneManagement;
 public class Circle : MonoBehaviour
 {
     //Time settings
@@ -21,21 +18,21 @@ public class Circle : MonoBehaviour
     public int iterationsPerFrame;
     float deltaTime = 0.0001f;
 
-    public bool get = false;
+    public bool gridSpawning = false;
 
     //Gizmos 
     public bool drawGizmosBoundry = true;
     Tuple<int, int>[] cellOffsets = new Tuple<int, int>[]
     {
-        Tuple.Create(-1, 1),
-        Tuple.Create(0, 1),
-        Tuple.Create(1, 1),
-        Tuple.Create(-1, 0),
         Tuple.Create(0, 0),
-        Tuple.Create(1, 0),
-        Tuple.Create(-1, -1),
+        Tuple.Create(0, 1),
         Tuple.Create(0, -1),
-        Tuple.Create(1, -1),
+        Tuple.Create(-1, 0),
+        Tuple.Create(-1, 1),
+        Tuple.Create(-1, -1),
+        Tuple.Create(1, 0),
+        Tuple.Create(1, 1),
+        Tuple.Create(1, -1)
     };
     //Circle properties
     [Range(0, 10)]
@@ -43,6 +40,7 @@ public class Circle : MonoBehaviour
     public float smoothingRadius = 0.5f;
     public int segments = 100;
     public float collisionDampening = 0.82f;
+    public float spacingFactor = 0.1f;
 
     public float targetDensity;
     public float viscosityStrength;
@@ -54,7 +52,6 @@ public class Circle : MonoBehaviour
     private float[] densities;
     private int[] startIndices;
     private Vector3[] velocity;
-    private Vector3[] points;
     private Matrix4x4[] positionsMatrices;
     private Vector3[] positions;
     private Vector3[] predictedPositions;
@@ -79,32 +76,46 @@ public class Circle : MonoBehaviour
 
     void Start()
     {
-        fixedNeighbour = GetComponent<NeighbourSearch>();
+        fixedNeighbour = gameObject.GetComponent<NeighbourSearch>();
+        fixedNeighbour.particleCount = particleCount;
+        fixedNeighbour.smoothingRadius = smoothingRadius;
         positions = new Vector3[particleCount];
         velocity = new Vector3[particleCount];
         positionsMatrices = new Matrix4x4[particleCount];
         predictedPositions = new Vector3[particleCount];
-        points = new Vector3[particleCount];
         startIndices = new int[particleCount];
 
         densities = new float[particleCount];
 
+        //Random circle placement
         float minX = boundsSize.x / 2 * -1 + circleRadius;
         float maxX = boundsSize.x / 2 - circleRadius;
 
         float minY = boundsSize.y / 2 * -1 + circleRadius;
         float maxY = boundsSize.y / 2 - circleRadius;
 
-        int particlesPerRow = (int)Mathf.Sqrt(particleCount);
-        int particlesPerCol = (particleCount -1) / particlesPerRow + 1;
-        float spacing = circleRadius * 2 + 0.01f;
 
-        for (int i = 0; i < particleCount; i++)
+        if (gridSpawning)
         {
-            float x = (i % particlesPerRow - particlesPerRow / 2f + 0.5f) * spacing;
-            float y = (i / particlesPerRow - particlesPerCol / 2f + 0.5f) * spacing;
-            //positions[i] = new Vector3(UnityEngine.Random.Range(minX, maxX), UnityEngine.Random.Range(minY, maxY), 0);    
-            positions[i] = new Vector3(x, y, 0);
+            // Grid spacing
+            int particlesPerRow = (int)Mathf.Sqrt(particleCount);
+            int particlesPerCol = (particleCount - 1) / particlesPerRow + 1;
+            float spacing = circleRadius * 2 + 0.01f + spacingFactor;
+
+            for (int i = 0; i < particleCount; i++)
+            {
+                float x = (i % particlesPerRow - particlesPerRow / 2f + 0.5f) * spacing;
+                float y = (i / particlesPerRow - particlesPerCol / 2f + 0.5f) * spacing;
+                positions[i] = new Vector3(x, y, 0);
+            }
+        }
+        else
+        {
+            for (int i = 0; i < particleCount; i++)
+            {
+                //Random circle placement
+                positions[i] = new Vector3(UnityEngine.Random.Range(minX, maxX), UnityEngine.Random.Range(minY, maxY), 0);
+            }
         }
 
         mesh = CreateCircleMesh(circleRadius, segments);
@@ -115,24 +126,25 @@ public class Circle : MonoBehaviour
             receiveShadows = false
         };
 
-        fixedNeighbour.UpdateGridSorting(positions, smoothingRadius, true);
+        //fixedNeighbour.UpdateGridSorting(positions, smoothingRadius, true);
     }
 
-    Vector2 CalculatePressureForce(int particleIndex)
+    Vector2 CalculatePressureForce(int particleIndex, List<int> neighbours)
     {
         Vector2 pressureForce = Vector2.zero;
+        Vector3 myPosition = positions[particleIndex];
 
-        for (int i = 0; i < particleCount; i++)
+        foreach (int i in neighbours)
         {
             if (i == particleIndex) continue;
-            Vector3 offset = positions[i] - positions[particleIndex];
+            Vector3 offset = positions[i] - myPosition;
             float dst = offset.magnitude;
             if (dst > smoothingRadius) continue;
             Vector2 dir = dst == 0 ? new Vector2(0, 1) : offset / dst;
             float slope = SmoothingKernelDerivative(dst, smoothingRadius);
             float density = densities[i];
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
-            pressureForce += sharedPressure * dir * slope * mass / density;
+            pressureForce += mass * sharedPressure * slope * dir / density;
         }
 
         return pressureForce;
@@ -149,9 +161,7 @@ public class Circle : MonoBehaviour
     {
         Parallel.For(0, particleCount, i =>
         {
-            //InsideRadiusInfluenceDensity(positions[i], i);
-            //ForeachPointWithinRadius(positions[i], i);
-            densities[i] = CalculateDensity(predictedPositions[i], i);
+            densities[i] = CalculateDensity(predictedPositions[i]);
         });
     }
 
@@ -162,12 +172,15 @@ public class Circle : MonoBehaviour
         return pressure;
     }
 
-    static float SmoothingKernel(float radius, float distance)
+    static float SmoothingDensityKernel(float radius, float distance)
     {
-        if (distance >= radius) return 0;
-
-        float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
-        return (radius - distance) * (radius - distance) / volume;
+        if (distance < radius)
+        {
+            float v = radius - distance;
+            float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
+            return v * v / volume;
+        }
+        return 0;
     }
 
     static float SmoothingKernelDerivative(float dst, float radius)
@@ -183,20 +196,14 @@ public class Circle : MonoBehaviour
         float volume = Mathf.PI * Mathf.Pow(radius, 8) / 4;
         float value = Mathf.Max(0, radius * radius - dst * dst);
         return value * value * value / volume;
-
-        /*if(dst >= radius) return 0;
-        float f = radius * radius -dst * dst;
-        float scale = -24 / (Mathf.PI * Mathf.Pow(radius, 8));
-        return scale * dst * f * f;*/
-
     }
 
-    Vector3 CalculateViscosityForce(int particleIndex)
+    Vector3 CalculateViscosityForce(int particleIndex, List<int> neighbours)
     {
         Vector3 viscosityForce = Vector3.zero;
         Vector3 positionsInner = positions[particleIndex];
 
-        for (int i = 0; i < particleCount; i++)
+        foreach(int i in neighbours)
         {
             float dst = (positionsInner - positions[i]).magnitude;
             if (dst > smoothingRadius) continue;
@@ -207,16 +214,15 @@ public class Circle : MonoBehaviour
         return viscosityForce * viscosityStrength;
     }
 
-    float CalculateDensity(Vector3 particlePosition, int ourParticleIndex)
+    float CalculateDensity(Vector3 particlePosition)
     {
         float density = 0;
 
-        foreach(Vector3 position in positions)
+        foreach(Vector3 position in predictedPositions)
         {
-            if (position == particlePosition) continue;
             float dst = (position - particlePosition).magnitude;
-            float influence = SmoothingKernel(smoothingRadius, dst);
-            density += mass * influence;
+            float influence = SmoothingDensityKernel(smoothingRadius, dst);
+            density += influence;
         }
 
         return density;
@@ -233,16 +239,15 @@ public class Circle : MonoBehaviour
     }
 
     void Update()
-    {
-        if(get)
-        {
-            fixedNeighbour.UpdateGridSorting(positions, smoothingRadius, false);
-            get = false;
-        }
-
+    { 
         if (Time.frameCount > 10)
         {
             RunSimulationFrame(Time.deltaTime);
+        }
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            SceneManager.LoadScene(0);
         }
     }
 
@@ -266,20 +271,21 @@ public class Circle : MonoBehaviour
             predictedPositions[i] = positions[i] + velocity[i] * 1 / 120f;
         });
 
-        fixedNeighbour.UpdateGridSorting(predictedPositions, smoothingRadius, false);
-
-        for(int i = 0;i < particleCount; i++)
-        {
-            InsideRadiusInfluenceDensity(predictedPositions[i], i);
-        }
-
-        UpdateDensities();
+        startIndices = fixedNeighbour.UpdateGridLookup(predictedPositions);
 
         Parallel.For(0, particleCount, i =>
         {
-            Vector3 pressureForce = CalculatePressureForce(i);
+            InsideRadiusInfluenceDensity(predictedPositions[i], i);
+        });
+
+        //UpdateDensities();
+
+        Parallel.For(0, particleCount, i =>
+        {
+            List<int> neighbours = fixedNeighbour.GetNeighbours(positions[i]);
+            Vector3 pressureForce = CalculatePressureForce(i, neighbours);
             Vector3 pressureAcceleration = pressureForce / densities[i];
-            Vector3 viscosityForce = CalculateViscosityForce(i);
+            Vector3 viscosityForce = CalculateViscosityForce(i, neighbours);
 
             velocity[i] += viscosityForce + pressureAcceleration * deltaTime;
         });
@@ -311,10 +317,12 @@ public class Circle : MonoBehaviour
 
     public void InsideRadiusInfluenceDensity(Vector3 point, int myIndex)
     {
-        GridItem gridItem = fixedNeighbour.FindGridCell(point);
+        float density = 0;
+
+        (int cellX, int cellY) = fixedNeighbour.GetGridLocation(point);
         foreach ((int offsetX, int offsetY) in cellOffsets)
         {
-            uint key = fixedNeighbour.GetCellKey(fixedNeighbour.HashCell(gridItem.coordX + offsetX, gridItem.coordY + offsetY));
+            uint key = fixedNeighbour.GetCellKey(fixedNeighbour.GetHash(cellX + offsetX, cellY + offsetY), particleCount);
             int cellStartIndex = startIndices[key];
 
             for (int i = cellStartIndex; i < fixedNeighbour.gridLookup.Length; i++)
@@ -322,16 +330,16 @@ public class Circle : MonoBehaviour
                 if (fixedNeighbour.gridLookup[i].cellKey != key) break;
 
                 int particleIndex = fixedNeighbour.gridLookup[i].particleIndex;
-                if(particleIndex == myIndex) 
-                    continue;
 
-                float sqrDst = (points[particleIndex] - point).sqrMagnitude;
+                float sqrDst = (positions[particleIndex] - point).sqrMagnitude;
                 if (sqrDst <= smoothingRadius * smoothingRadius)
                 {
-                    Debug.Log("I say :" + myIndex + " he is in here: " + particleIndex);
+                    float influence = SmoothingDensityKernel(smoothingRadius, sqrDst);
+                    density += mass * influence;
                 }
             }
         }
+        densities[myIndex] = density;
     }
 
     void OnDrawGizmos()

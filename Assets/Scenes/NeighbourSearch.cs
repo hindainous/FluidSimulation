@@ -1,4 +1,3 @@
-using JetBrains.Annotations;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,126 +6,110 @@ using System.Diagnostics.Tracing;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UIElements;
-using UnityEditorInternal;
+using System.Drawing;
+
 
 public class NeighbourSearch : MonoBehaviour
 {
+
+    Tuple<int, int>[] cellOffsets = new Tuple<int, int>[]
+    {
+            Tuple.Create(0, 0),
+            Tuple.Create(0, 1),
+            Tuple.Create(0, -1),
+            Tuple.Create(-1, 0),
+            Tuple.Create(-1, 1),
+            Tuple.Create(-1, -1),
+            Tuple.Create(1, 0),
+            Tuple.Create(1, 1),
+            Tuple.Create(1, -1)
+    };
+
     public bool drawGizmosGrid = true;
-    public List<GridItem> grids = new List<GridItem>();
+    public HashSet<GridItem> grids = new HashSet<GridItem>();
     public GameObject Simulation;
 
     public Vector3[] points;
     public float radius;
 
     public Entry[] gridLookup;
-    public int[] startIndices;
+    private int[] startIndices;
+
+    public int particleCount;
+    public float smoothingRadius;
 
     // Start is called before the first frame update
     void Start()
     {
-        gridLookup = new Entry[Simulation.GetComponent<Circle>().particleCount];
-        startIndices = new int[Simulation.GetComponent<Circle>().particleCount];
+        gridLookup = new Entry[particleCount];
+        startIndices = new int[particleCount];
     }
 
-    public void UpdateGridSorting(Vector3[] points, float radius, bool recalculateGrid = false)
+    public int [] UpdateGridLookup(Vector3[] positions)
     {
-        this.points = points;
-        this.radius = radius;
-
-        if( recalculateGrid )
+        Parallel.For(0, positions.Length, i =>
         {
-            MakeList();
-        }
-
-        Parallel.For(0, points.Length, i =>
-        {
-            GridItem item = FindGridCell(points[i]);
-            gridLookup[i] = new Entry(i, GetCellKey(HashCell(item.coordX, item.coordY)));
+            (int x, int y) = GetGridLocation(positions[i]);
+            uint Hash = GetHash(x, y);
+            gridLookup[i] = new Entry(i, GetCellKey(Hash, positions.Length));
             startIndices[i] = int.MaxValue;
         });
 
-        /*for (int i = 0; i < gridLookup.Length; i++)
-        {
-            Debug.Log("GRIDLOOKUP: " +  gridLookup[i].cellKey + " index: " + gridLookup[i].particleIndex);
-        }*/
+        Array.Sort(gridLookup, (Entry a, Entry b) => a.cellKey.CompareTo(b.cellKey));
 
-        Array.Sort(gridLookup);
-
-        Parallel.For(0, points.Length, i =>
+        Parallel.For(0, positions.Length, i =>
         {
             uint CurrentKey = gridLookup[i].cellKey;
-            uint PreviousKey = i == 0 ? uint.MaxValue : gridLookup[i - 1].cellKey;
-            if (CurrentKey != PreviousKey)
+            uint PreviusKey = i == 0 ? uint.MaxValue : gridLookup[i - 1].cellKey;
+            if (CurrentKey != PreviusKey)
             {
                 startIndices[CurrentKey] = i;
             }
         });
 
+        return startIndices;
     }
 
-    public GridItem FindGridCell(Vector3 position)
+    public List<int> GetNeighbours(Vector3 point)
     {
-        for(int i = 0; i < grids.Count; i++)
+        List<int> neighbours = new List<int>();
+
+        (int cellX, int cellY) = GetGridLocation(point);
+        foreach ((int offsetX, int offsetY) in cellOffsets)
         {
-            GridItem item = grids[i];
+            uint key = GetCellKey(GetHash(cellX + offsetX, cellY + offsetY), particleCount);
+            int cellStartIndex = startIndices[key];
 
-            if (item.upperLeftx < position.x)
-                continue;
-
-            if (item.upperLefty < position.y)
-                continue;
-
-            if (item.lowerRightx > position.x)
-                continue;
-
-            if(item.lowerRighty > position.y)
-                continue;
-
-            return item;
-        }
-
-        return new GridItem();
-    }
-
-    public uint GetCellKey(uint Hash)
-    {
-        return Hash % (uint)gridLookup.Length;
-    }
-
-    public uint HashCell(int x, int y)
-    {
-        uint a = (uint)x * 103387;
-        uint b = (uint)y * 96763;
-        return a + b;
-    }
-
-    void MakeList()
-    {
-        List<GridItem> gridTemp = new List<GridItem>();
-        float smoothingDiameter = Simulation.GetComponent<Circle>().smoothingRadius * 2;
-        float x = Simulation.GetComponent<Circle>().boundsSize.x;
-        int counter = 0;
-        for (int i = 0; x > 0; i++)
-        {
-            x -= smoothingDiameter;
-            float y = Simulation.GetComponent<Circle>().boundsSize.y;
-            for (int j = 0; y > 0; j++)
+            for (int i = cellStartIndex; i < particleCount; i++)
             {
-                counter++;
-                y -= smoothingDiameter;
-                float xPosi = smoothingDiameter * i - (Simulation.GetComponent<Circle>().boundsSize.x / 2);
-                float yPosi = smoothingDiameter * j - (Simulation.GetComponent<Circle>().boundsSize.y / 2);
-                //Debug.Log("Positions x: " + xPosi + " y: " + yPosi + " i: " + i + " j: " + j);
-                gridTemp.Add(new GridItem(xPosi, 
-                                          yPosi, 
-                                          xPosi + smoothingDiameter, 
-                                          yPosi + smoothingDiameter, 
-                                          i, 
-                                          j));
+                if (gridLookup[i].cellKey != key) break;
+
+                int particleIndex = gridLookup[i].particleIndex;
+
+                neighbours.Add(particleIndex);
             }
         }
 
-        grids = gridTemp;
+        return neighbours;
+    }
+
+    public (int x, int y) GetGridLocation(Vector3 position)
+    {
+        int x = (int)(position.x / smoothingRadius);
+        int y = (int)(position.y / smoothingRadius);
+        return (x, y);
+    }
+
+    public uint GetHash(int x, int y)
+    {
+        uint a = (uint)(x * 7019);
+        uint b = (uint)(y * 35317);
+        return a + b;
+    }
+
+    public uint GetCellKey(uint Hash, int length)
+    {
+        return (uint)(Hash % length);
     }
 
     void OnDrawGizmos()
@@ -168,7 +151,12 @@ public struct Entry : IComparable<Entry>
 
     public int CompareTo(Entry other)
     {
-        return other.cellKey.CompareTo(this.cellKey);
+        if( other.cellKey < this.cellKey ) return 1;
+        else if( other.cellKey > this.cellKey )return -1;
+        else
+        {
+            return 0;
+        }
     }
 }
 
