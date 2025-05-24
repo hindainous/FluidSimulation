@@ -46,15 +46,18 @@ public class Circle : MonoBehaviour
 
     public float targetDensity;
     public float viscosityStrength;
+    public float nearPressureMultiplier;
     public float pressureMultiplier;
 
-    public bool isPressed = false;
+    public bool isLeftPressed = false;
+    public bool isRightPressed = false;
     public float mouseForceStrength = 1.0f;
     public float mouseForceRadius = 5.0f;
     public float mass = 1.0f;
 
     //Circles properties
     private float[] densities;
+    private float[] nearDensities;
     private int[] startIndices;
     private Vector3[] velocity;
     private Matrix4x4[] positionsMatrices;
@@ -110,6 +113,7 @@ public class Circle : MonoBehaviour
         startIndices = new int[particleCount];
 
         densities = new float[particleCount];
+        nearDensities = new float[particleCount];
 
         //Random circle placement
         float minX = boundsSize.x / 2 * -1 + circleRadius;
@@ -165,11 +169,21 @@ public class Circle : MonoBehaviour
             Vector2 dir = dst == 0 ? new Vector2(0, 1) : offset / dst;
             float slope = SmoothingKernelDerivative(dst, smoothingRadius);
             float density = densities[i];
+            float nearDensity = nearDensities[i];
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
-            pressureForce += mass * sharedPressure * slope * dir / density;
+            float nearSharedPressure = CalculateSharedNearPressure(nearDensity, nearDensities[particleIndex]);
+            pressureForce += mass * nearSharedPressure * dir / nearDensity;
+            pressureForce += mass * sharedPressure * nearSharedPressure * slope * dir / density;
         }
 
         return pressureForce;
+    }
+
+    float CalculateSharedNearPressure(float nearDensityA, float nearDensityB)
+    {
+        float nearPressureA = ConvertNearDensityToPressure(nearDensityA);
+        float nearPressureB = ConvertNearDensityToPressure(nearDensityB);
+        return (nearPressureA + nearPressureB) / 2;
     }
 
     float CalculateSharedPressure(float densityA, float densityB)
@@ -186,6 +200,12 @@ public class Circle : MonoBehaviour
             densities[i] = CalculateDensity(predictedPositions[i]);
         });
     }*/
+
+    float ConvertNearDensityToPressure(float nearDensity)
+    {
+        float pressure = nearDensity * nearPressureMultiplier;
+        return pressure;
+    }
 
     float ConvertDensityToPressure(float density)
     {
@@ -290,12 +310,14 @@ public class Circle : MonoBehaviour
 
     void SimulationStep()
     {
+        isLeftPressed = Input.GetMouseButton(0);
+        isRightPressed = Input.GetMouseButton(1);
+
         Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Vector3 mousePos3 = new Vector3(mousePos.x, mousePos.y, 0);
         Parallel.For(0, particleCount, i =>
         {
-            if (isPressed)
-                velocity[i] += InteractionForce(mousePos3, mouseForceRadius, mouseForceStrength, i);
+            if (isLeftPressed || isRightPressed)
+                velocity[i] += InteractionForce(mousePos, mouseForceRadius, i);
 
             velocity[i] += Vector3.down * gravity * deltaTime;
             predictedPositions[i] = positions[i] + velocity[i] * 1 / 120f;
@@ -307,8 +329,6 @@ public class Circle : MonoBehaviour
         {
             InsideRadiusInfluenceDensity(predictedPositions[i], i);
         });
-
-        isPressed = Input.GetMouseButton(0);
 
         Parallel.For(0, particleCount, i =>
         {
@@ -328,10 +348,19 @@ public class Circle : MonoBehaviour
         });
     }
 
-    Vector3 InteractionForce(Vector3 inputPos, float radius, float strength, int particleIndex)
+    Vector3 InteractionForce(Vector2 inputPos, float radius, int particleIndex)
     {
+        if (isRightPressed)
+        {
+            mouseForceStrength = -1 * Mathf.Abs(mouseForceStrength);
+        }
+        else if (isLeftPressed)
+        {
+            mouseForceStrength = Mathf.Abs(mouseForceStrength);
+        }
+        Vector3 inputPos3D = new Vector3(inputPos.x, inputPos.y, 0);
         Vector3 interactionForce = Vector3.zero;
-        Vector3 offset = inputPos - positions[particleIndex];
+        Vector3 offset = inputPos3D - positions[particleIndex];
         float sqrDst = Vector3.Dot(offset, offset);
 
         if(sqrDst < radius * radius) 
@@ -339,7 +368,7 @@ public class Circle : MonoBehaviour
             float dst = Mathf.Sqrt(sqrDst);
             Vector3 dirToInputPoint = dst <= float.Epsilon ? Vector3.zero : offset / dst;
             float centreT = 1 - dst / radius;
-            interactionForce += (dirToInputPoint * strength - velocity[particleIndex]) * centreT;
+            interactionForce += (dirToInputPoint * mouseForceStrength - velocity[particleIndex]) * centreT;
         }
         return interactionForce;
     }
@@ -364,6 +393,7 @@ public class Circle : MonoBehaviour
     public void InsideRadiusInfluenceDensity(Vector3 point, int myIndex)
     {
         float density = 0;
+        float nearDensity = 0;
 
         (int cellX, int cellY) = fixedNeighbour.GetGridLocation(point);
         foreach ((int offsetX, int offsetY) in cellOffsets)
@@ -382,10 +412,12 @@ public class Circle : MonoBehaviour
                 {
                     float influence = Poly6Kernel(sqrDst);
                     density += mass * influence;
+                    nearDensity += mass * influence;
                 }
             }
         }
         densities[myIndex] = density;
+        nearDensities[myIndex] = nearDensity;
     }
 
     void OnDrawGizmos()
@@ -396,6 +428,15 @@ public class Circle : MonoBehaviour
             // Draw a yellow sphere at the transform's position
             Gizmos.color = UnityEngine.Color.yellow;
             Gizmos.DrawWireCube(new Vector3(0, 0, 0), size);
+
+
+            bool isPullInteraction = Input.GetMouseButton(0);
+            if (isRightPressed || isLeftPressed)
+            {
+                Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                Gizmos.color = isRightPressed ? UnityEngine.Color.green : UnityEngine.Color.red;
+                Gizmos.DrawWireSphere(mousePos, mouseForceRadius);
+            }
         }
     }
 

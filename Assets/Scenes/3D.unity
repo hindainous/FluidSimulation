@@ -247,7 +247,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   timeScale: 1
-  iterationsPerFrame: 1
+  iterationsPerFrame: 2
   gridSpawning: 0
   drawGizmosBoundry: 1
   circleRadius: 0.2
@@ -257,10 +257,10 @@ MonoBehaviour:
   collisionDampening: 0.82
   spacingFactor: 0.1
   targetDensity: 50
-  viscosityStrength: 0.001
+  viscosityStrength: 0.008
   pressureMultiplier: 400
   mass: 1
-  particleCount: 4000
+  particleCount: 5000
   fixedNeighbour: {fileID: 756900486}
   gravity: 10
   boundsSize: {x: 10, y: 10, z: 10}

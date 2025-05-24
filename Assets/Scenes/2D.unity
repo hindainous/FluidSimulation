@@ -2620,14 +2620,19 @@ MonoBehaviour:
   segments: 10
   collisionDampening: 0.82
   spacingFactor: 0.1
-  targetDensity: 8
+  targetDensity: 10
   viscosityStrength: 0.08
+  nearPressureMultiplier: 0.1
   pressureMultiplier: 500
+  isLeftPressed: 0
+  isRightPressed: 0
+  mouseForceStrength: 3
+  mouseForceRadius: 5
   mass: 1
-  particleCount: 2000
+  particleCount: 4000
   fixedNeighbour: {fileID: 1865793209}
   gravity: 10
-  boundsSize: {x: 30, y: 20}
+  boundsSize: {x: 40, y: 20}
   material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
 --- !u!114 &1865793209
 MonoBehaviour:
