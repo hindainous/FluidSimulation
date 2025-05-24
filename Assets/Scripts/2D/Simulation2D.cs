@@ -125,8 +125,6 @@ public class Circle : MonoBehaviour
             shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off,
             receiveShadows = false
         };
-
-        //fixedNeighbour.UpdateGridSorting(positions, smoothingRadius, true);
     }
 
     Vector2 CalculatePressureForce(int particleIndex, List<int> neighbours)
@@ -174,13 +172,9 @@ public class Circle : MonoBehaviour
 
     static float SmoothingDensityKernel(float radius, float distance)
     {
-        if (distance < radius)
-        {
-            float v = radius - distance;
-            float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
-            return v * v / volume;
-        }
-        return 0;
+        float v = radius - distance;
+        float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
+        return v * v / volume;
     }
 
     static float SmoothingKernelDerivative(float dst, float radius)
@@ -249,6 +243,11 @@ public class Circle : MonoBehaviour
         {
             SceneManager.LoadScene(0);
         }
+
+        if (Input.GetKeyDown(KeyCode.U))
+        {
+            SceneManager.LoadScene(1);
+        }
     }
 
     void RunSimulationFrame(float frameTime)
@@ -277,8 +276,6 @@ public class Circle : MonoBehaviour
         {
             InsideRadiusInfluenceDensity(predictedPositions[i], i);
         });
-
-        //UpdateDensities();
 
         Parallel.For(0, particleCount, i =>
         {

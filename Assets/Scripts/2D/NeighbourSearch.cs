@@ -26,11 +26,7 @@ public class NeighbourSearch : MonoBehaviour
     };
 
     public bool drawGizmosGrid = true;
-    public HashSet<GridItem> grids = new HashSet<GridItem>();
     public GameObject Simulation;
-
-    public Vector3[] points;
-    public float radius;
 
     public Entry[] gridLookup;
     private int[] startIndices;
@@ -111,31 +107,6 @@ public class NeighbourSearch : MonoBehaviour
     {
         return (uint)(Hash % length);
     }
-
-    void OnDrawGizmos()
-    {
-        if (drawGizmosGrid == true)
-        {
-            Vector3 cellSize = new Vector3(Simulation.GetComponent<Circle>().smoothingRadius * 2, Simulation.GetComponent<Circle>().smoothingRadius * 2);
-            Gizmos.color = UnityEngine.Color.green;
-
-            float x = Simulation.GetComponent<Circle>().boundsSize.x;
-
-            for (int i = 0; x > 0; i++)
-            {
-                x -= Simulation.GetComponent<Circle>().smoothingRadius * 2;
-                float y = Simulation.GetComponent<Circle>().boundsSize.y;
-                for (int j = 0; y > 0; j++)
-                {
-                    y -= Simulation.GetComponent<Circle>().smoothingRadius * 2;
-                    Gizmos.DrawWireCube(new Vector3(
-                        Simulation.GetComponent<Circle>().smoothingRadius * 2 * i - (Simulation.GetComponent<Circle>().boundsSize.x / 2) + Simulation.GetComponent<Circle>().smoothingRadius, 
-                        Simulation.GetComponent<Circle>().smoothingRadius * 2 * j - (Simulation.GetComponent<Circle>().boundsSize.y / 2) + Simulation.GetComponent<Circle>().smoothingRadius, 
-                        0), cellSize);
-                }
-            }
-        }
-    }
 }
 
 public struct Entry : IComparable<Entry>
@@ -157,27 +128,5 @@ public struct Entry : IComparable<Entry>
         {
             return 0;
         }
-    }
-}
-
-public struct GridItem
-{
-    public int coordX{ get; set; }
-    public int coordY{ get; set; }
-    public float lowerRightx { get; set; }
-    public float lowerRighty { get; set; }
-
-    public float upperLeftx { get; set; }
-    public float upperLefty { get; set; }
-
-
-    public GridItem(float lrx, float lry, float ulx, float uly, int coordX, int coordY)
-    {
-        this.upperLeftx = ulx;
-        this.upperLefty = uly;
-        this.lowerRightx = lrx;
-        this.lowerRighty = lry;
-        this.coordX = coordX;
-        this.coordY = coordY;
     }
 }
