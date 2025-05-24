@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Drawing;
 using UnityEngine.SceneManagement;
+using static UnityEditor.PlayerSettings;
+using Unity.Mathematics;
 public class Circle : MonoBehaviour
 {
     //Time settings
@@ -46,6 +48,9 @@ public class Circle : MonoBehaviour
     public float viscosityStrength;
     public float pressureMultiplier;
 
+    public bool isPressed = false;
+    public float mouseForceStrength = 1.0f;
+    public float mouseForceRadius = 5.0f;
     public float mass = 1.0f;
 
     //Circles properties
@@ -69,13 +74,32 @@ public class Circle : MonoBehaviour
 
     public Material material;
 
+    private float poly6Constant;
+    private float hSquared;
+
     public Vector3[] getPositions()
     {
         return positions;
     }
 
+    void CalculatePoly6Constant()
+    {
+        // 315 / (64 * pi * h^9)
+        poly6Constant = 315f / (64f * Mathf.PI * Mathf.Pow(smoothingRadius, 9));
+        hSquared = smoothingRadius * smoothingRadius;
+    }
+
+    float Poly6Kernel(float rSquared)
+    {
+        if (rSquared >= hSquared) return 0f;
+
+        float diff = hSquared - rSquared;
+        return poly6Constant * diff * diff * diff;
+    }
+
     void Start()
     {
+        CalculatePoly6Constant();
         fixedNeighbour = gameObject.GetComponent<NeighbourSearch>();
         fixedNeighbour.particleCount = particleCount;
         fixedNeighbour.smoothingRadius = smoothingRadius;
@@ -155,26 +179,19 @@ public class Circle : MonoBehaviour
         return (pressureA + pressureB) / 2;
     }
 
-    void UpdateDensities()
+    /*void UpdateDensities()
     {
         Parallel.For(0, particleCount, i =>
         {
             densities[i] = CalculateDensity(predictedPositions[i]);
         });
-    }
+    }*/
 
     float ConvertDensityToPressure(float density)
     {
         float densityError = density - targetDensity;
         float pressure = densityError * pressureMultiplier;
         return pressure;
-    }
-
-    static float SmoothingDensityKernel(float radius, float distance)
-    {
-        float v = radius - distance;
-        float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
-        return v * v / volume;
     }
 
     static float SmoothingKernelDerivative(float dst, float radius)
@@ -208,6 +225,13 @@ public class Circle : MonoBehaviour
         return viscosityForce * viscosityStrength;
     }
 
+    /*static float SmoothingDensityKernel(float radius, float distance)
+    {
+        float v = radius - distance;
+        float volume = (Mathf.PI * Mathf.Pow(radius, 4)) / 6;
+        return v * v / volume;
+    }
+
     float CalculateDensity(Vector3 particlePosition)
     {
         float density = 0;
@@ -220,7 +244,7 @@ public class Circle : MonoBehaviour
         }
 
         return density;
-    }
+    }*/
 
     void LateUpdate()
     {
@@ -262,10 +286,17 @@ public class Circle : MonoBehaviour
         }
     }
 
+
+
     void SimulationStep()
     {
+        Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector3 mousePos3 = new Vector3(mousePos.x, mousePos.y, 0);
         Parallel.For(0, particleCount, i =>
         {
+            if (isPressed)
+                velocity[i] += InteractionForce(mousePos3, mouseForceRadius, mouseForceStrength, i);
+
             velocity[i] += Vector3.down * gravity * deltaTime;
             predictedPositions[i] = positions[i] + velocity[i] * 1 / 120f;
         });
@@ -276,6 +307,8 @@ public class Circle : MonoBehaviour
         {
             InsideRadiusInfluenceDensity(predictedPositions[i], i);
         });
+
+        isPressed = Input.GetMouseButton(0);
 
         Parallel.For(0, particleCount, i =>
         {
@@ -293,6 +326,22 @@ public class Circle : MonoBehaviour
             positions[i] += velocity[i] * deltaTime;
             ResolveCollision(i);
         });
+    }
+
+    Vector3 InteractionForce(Vector3 inputPos, float radius, float strength, int particleIndex)
+    {
+        Vector3 interactionForce = Vector3.zero;
+        Vector3 offset = inputPos - positions[particleIndex];
+        float sqrDst = Vector3.Dot(offset, offset);
+
+        if(sqrDst < radius * radius) 
+        {
+            float dst = Mathf.Sqrt(sqrDst);
+            Vector3 dirToInputPoint = dst <= float.Epsilon ? Vector3.zero : offset / dst;
+            float centreT = 1 - dst / radius;
+            interactionForce += (dirToInputPoint * strength - velocity[particleIndex]) * centreT;
+        }
+        return interactionForce;
     }
 
     void ResolveCollision(int arrayPosition)
@@ -331,7 +380,7 @@ public class Circle : MonoBehaviour
                 float sqrDst = (positions[particleIndex] - point).sqrMagnitude;
                 if (sqrDst <= smoothingRadius * smoothingRadius)
                 {
-                    float influence = SmoothingDensityKernel(smoothingRadius, sqrDst);
+                    float influence = Poly6Kernel(sqrDst);
                     density += mass * influence;
                 }
             }
