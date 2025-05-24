@@ -224,10 +224,10 @@ public class Circle : MonoBehaviour
 
     void LateUpdate()
     {
-        for (int i = 0; i < particleCount; i++)
+        Parallel.For(0, particleCount, i =>
         {
             positionsMatrices[i] = Matrix4x4.Translate(positions[i]);
-        }
+        });
         Graphics.DrawMeshInstanced(mesh, 0, material, positionsMatrices);
 
     }
