@@ -64,6 +64,7 @@ public class Simulation3D : MonoBehaviour
     public float targetDensity;
     public float viscosityStrength;
     public float pressureMultiplier;
+    public float nearPressureMultiplier;
 
     public float mass = 1.0f;
 
@@ -175,11 +176,22 @@ public class Simulation3D : MonoBehaviour
             Vector3 dir = dst == 0 ? new Vector3(0, 1, -1) : offset / dst;
             float slope = SmoothingKernelDerivative(dst, smoothingRadius);
             float density = densities[i];
+            float nearDensity = nearDensities[i];
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
+            float sharedNearPressure = CalculateSharedNearPressure(nearDensity, nearDensities[particleIndex]);
+            pressureForce += mass * sharedNearPressure * dir / nearDensity;
             pressureForce += mass * sharedPressure * slope * dir / density;
         }
 
         return pressureForce;
+    }
+
+
+    float CalculateSharedNearPressure(float NearDensityA, float NearDensityB)
+    {
+        float NearPressureA = ConvertDensityToNearPressure(NearDensityA);
+        float NearPressureB = ConvertDensityToNearPressure(NearDensityB);
+        return (NearPressureA + NearPressureB) / 2;
     }
 
     float CalculateSharedPressure(float densityA, float densityB)
@@ -196,6 +208,12 @@ public class Simulation3D : MonoBehaviour
             densities[i] = CalculateDensity(predictedPositions[i]);
         });
     }*/
+
+    float ConvertDensityToNearPressure(float nearDensity)
+    {
+        float pressure = nearDensity * nearPressureMultiplier;
+        return pressure;
+    }
 
     float ConvertDensityToPressure(float density)
     {
@@ -292,7 +310,6 @@ public class Simulation3D : MonoBehaviour
         }
 
     }
-
     void RunSimulationFrame(float frameTime)
     {
         float timeStep = frameTime / iterationsPerFrame * timeScale;
@@ -364,6 +381,7 @@ public class Simulation3D : MonoBehaviour
     public void InsideRadiusInfluenceDensity(Vector3 point, int myIndex)
     {
         float density = 0;
+        float nearDensity = 0;
 
         (int cellX, int cellY, int cellZ) = fixedNeighbour.GetGridLocation(point);
         foreach ((int offsetX, int offsetY, int offSetZ) in cellOffsets)
@@ -382,10 +400,12 @@ public class Simulation3D : MonoBehaviour
                 {
                     float influence = SmoothingDensityKernel(smoothingRadius, sqrDst);
                     density += mass * influence;
+                    nearDensity += mass * influence;
                 }
             }
         }
         densities[myIndex] = density;
+        nearDensities[myIndex] = nearDensity;
     }
 
     void OnDrawGizmos()

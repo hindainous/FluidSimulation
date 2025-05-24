@@ -256,9 +256,10 @@ MonoBehaviour:
   latitudeSegments: 16
   collisionDampening: 0.82
   spacingFactor: 0.1
-  targetDensity: 50
+  targetDensity: 10
   viscosityStrength: 0.008
-  pressureMultiplier: 400
+  pressureMultiplier: 600
+  nearPressureMultiplier: 0.1
   mass: 1
   particleCount: 5000
   fixedNeighbour: {fileID: 756900486}

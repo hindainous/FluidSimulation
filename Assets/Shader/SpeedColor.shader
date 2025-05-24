@@ -1,106 +1,101 @@
-Shader "Custom/SpeedMultiColorGradientInstanced"
+Shader "Custom/SpeedColorStandardLike"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        _MainTex ("Albedo (RGB)", 2D) = "white" {}
+        _Glossiness ("Smoothness", Range(0,1)) = 0.5
+        _Metallic ("Metallic", Range(0,1)) = 0.0
+        
+        [Header(Speed Colors)]
         _MinSpeed ("Min Speed", Float) = 0
         _MaxSpeed ("Max Speed", Float) = 10
         _ColorIntensity ("Color Intensity", Range(0, 2)) = 1
+        
+        [Header(Shading)]
+        _ShadingContrast ("Shading Contrast", Range(0.5, 2)) = 1.2
+        _RimPower ("Rim Power", Range(0, 5)) = 2.0
+        _RimIntensity ("Rim Intensity", Range(0, 1)) = 0.3
     }
     
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
-        LOD 100
+        Tags { "RenderType"="Opaque" "Queue"="Geometry" }
+        LOD 200
 
-        Pass
+        CGPROGRAM
+        #pragma surface surf Standard fullforwardshadows
+        #pragma instancing_options assumeuniformscaling
+        #pragma target 3.0
+
+        sampler2D _MainTex;
+        half _Glossiness;
+        half _Metallic;
+        
+        float _MinSpeed;
+        float _MaxSpeed;
+        float _ColorIntensity;
+        float _ShadingContrast;
+        float _RimPower;
+        float _RimIntensity;
+
+        UNITY_INSTANCING_BUFFER_START(Props)
+            UNITY_DEFINE_INSTANCED_PROP(float, _Speed)
+        UNITY_INSTANCING_BUFFER_END(Props)
+
+        struct Input
         {
-            CGPROGRAM
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma multi_compile_instancing
+            float2 uv_MainTex;
+            float3 viewDir;
+            float3 worldNormal;
+            INTERNAL_DATA
+        };
+
+        float3 GetSpeedColor(float t)
+        {
+            float3 blue = float3(0.0, 0.0, 1.0);
+            float3 green = float3(0.0, 1.0, 0.0);
+            float3 yellow = float3(1.0, 1.0, 0.0);
+            float3 red = float3(1.0, 0.0, 0.0);
             
-            #include "UnityCG.cginc"
-
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                float4 vertex : SV_POSITION;
-                float4 color : COLOR;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            float _MinSpeed;
-            float _MaxSpeed;
-            float _ColorIntensity;
-
-            UNITY_INSTANCING_BUFFER_START(Props)
-                UNITY_DEFINE_INSTANCED_PROP(float, _Speed)
-            UNITY_INSTANCING_BUFFER_END(Props)
-
-            // Function to create smooth color gradient
-            float3 GetSpeedColor(float t)
-            {
-                // Define color stops (0-1 range)
-                float3 blue = float3(0.0, 0.0, 1.0);
-                float3 green = float3(0.0, 1.0, 0.0);
-                float3 yellow = float3(1.0, 1.0, 0.0);
-                float3 red = float3(1.0, 0.0, 0.0);
-                
-                // Blend between colors based on speed ratio
-                if (t < 0.33)
-                {
-                    return lerp(blue, green, t * 3.0);
-                }
-                else if (t < 0.66)
-                {
-                    return lerp(green, yellow, (t - 0.33) * 3.0);
-                }
-                else
-                {
-                    return lerp(yellow, red, (t - 0.66) * 3.0);
-                }
-            }
-
-            v2f vert(appdata v)
-            {
-                v2f o;
-                UNITY_SETUP_INSTANCE_ID(v);
-                UNITY_TRANSFER_INSTANCE_ID(v, o);
-                
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                
-                // Get instance-specific speed
-                float speed = UNITY_ACCESS_INSTANCED_PROP(Props, _Speed);
-                
-                // Normalize speed (0-1 range)
-                float t = saturate((speed - _MinSpeed) / (_MaxSpeed - _MinSpeed));
-                
-                // Get color from gradient
-                float3 color = GetSpeedColor(t);
-                
-                // Apply intensity and set alpha to 1
-                o.color = float4(color * _ColorIntensity, 1.0);
-                
-                return o;
-            }
-
-            fixed4 frag(v2f i) : SV_Target
-            {
-                fixed4 col = tex2D(_MainTex, i.uv) * i.color;
-                return col;
-            }
-            ENDCG
+            if (t < 0.33)
+                return lerp(blue, green, t * 3.0);
+            else if (t < 0.66)
+                return lerp(green, yellow, (t - 0.33) * 3.0);
+            else
+                return lerp(yellow, red, (t - 0.66) * 3.0);
         }
+
+        void surf (Input IN, inout SurfaceOutputStandard o)
+        {
+            // Base color from texture
+            fixed4 texColor = tex2D(_MainTex, IN.uv_MainTex);
+            
+            // Get speed-based color
+            float speed = UNITY_ACCESS_INSTANCED_PROP(Props, _Speed);
+            float t = saturate((speed - _MinSpeed) / (_MaxSpeed - _MinSpeed));
+            float3 speedColor = GetSpeedColor(t) * _ColorIntensity;
+            
+            // Combine with texture
+            o.Albedo = texColor.rgb * speedColor;
+            
+            // Standard material properties
+            o.Metallic = _Metallic;
+            o.Smoothness = _Glossiness;
+            o.Alpha = texColor.a;
+            
+            // Enhanced shading
+            float3 normal = WorldNormalVector(IN, o.Normal);
+            float NdotV = saturate(dot(normal, normalize(IN.viewDir)));
+            
+            // Rim lighting
+            float rim = pow(1.0 - NdotV, _RimPower) * _RimIntensity;
+            o.Emission = o.Albedo * rim;
+            
+            // Adjust shading contrast
+            o.Albedo = pow(o.Albedo, _ShadingContrast);
+        }
+        ENDCG
     }
+    
+    FallBack "Standard"
 }
