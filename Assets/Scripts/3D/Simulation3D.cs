@@ -68,7 +68,11 @@ public class Simulation3D : MonoBehaviour
     public float mass = 1.0f;
 
     //Circles properties
+    private MaterialPropertyBlock propertyBlock;
+
+    private float[] speeds;
     private float[] densities;
+    private float[] nearDensities;
     private int[] startIndices;
     private Vector3[] velocity;
     private Matrix4x4[] positionsMatrices;
@@ -104,7 +108,9 @@ public class Simulation3D : MonoBehaviour
         predictedPositions = new Vector3[particleCount];
         startIndices = new int[particleCount];
 
+        speeds = new float[particleCount];
         densities = new float[particleCount];
+        nearDensities = new float[particleCount];
 
         //Random circle placement
         float minX = boundsSize.x / 2 * -1 + circleRadius;
@@ -183,13 +189,13 @@ public class Simulation3D : MonoBehaviour
         return (pressureA + pressureB) / 2;
     }
 
-    void UpdateDensities()
+    /*void UpdateDensities()
     {
         Parallel.For(0, particleCount, i =>
         {
             densities[i] = CalculateDensity(predictedPositions[i]);
         });
-    }
+    }*/
 
     float ConvertDensityToPressure(float density)
     {
@@ -240,7 +246,8 @@ public class Simulation3D : MonoBehaviour
         return viscosityForce * viscosityStrength;
     }
 
-    float CalculateDensity(Vector3 particlePosition)
+    // Old code
+    /*float CalculateDensity(Vector3 particlePosition)
     {
         float density = 0;
 
@@ -252,15 +259,18 @@ public class Simulation3D : MonoBehaviour
         }
 
         return density;
-    }
+    }*/
 
     void LateUpdate()
     {
+        propertyBlock = new MaterialPropertyBlock();
         for (int i = 0; i < particleCount; i++)
         {
             positionsMatrices[i] = Matrix4x4.Translate(positions[i]);
+            speeds[i] = velocity[i].magnitude;
         }
-        Graphics.DrawMeshInstanced(mesh, 0, material, positionsMatrices);
+        propertyBlock.SetFloatArray("_Speed", speeds);
+        Graphics.DrawMeshInstanced(mesh, 0, material, positionsMatrices, particleCount, propertyBlock);
 
     }
 

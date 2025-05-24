@@ -56,6 +56,9 @@ public class Circle : MonoBehaviour
     public float mass = 1.0f;
 
     //Circles properties
+    private MaterialPropertyBlock propertyBlock;
+
+    private float[] speeds;
     private float[] densities;
     private float[] nearDensities;
     private int[] startIndices;
@@ -108,6 +111,7 @@ public class Circle : MonoBehaviour
         fixedNeighbour.smoothingRadius = smoothingRadius;
         positions = new Vector3[particleCount];
         velocity = new Vector3[particleCount];
+        speeds = new float[particleCount];
         positionsMatrices = new Matrix4x4[particleCount];
         predictedPositions = new Vector3[particleCount];
         startIndices = new int[particleCount];
@@ -268,11 +272,14 @@ public class Circle : MonoBehaviour
 
     void LateUpdate()
     {
+        propertyBlock = new MaterialPropertyBlock();
         Parallel.For(0, particleCount, i =>
         {
             positionsMatrices[i] = Matrix4x4.Translate(positions[i]);
+            speeds[i] = velocity[i].magnitude;
         });
-        Graphics.DrawMeshInstanced(mesh, 0, material, positionsMatrices);
+        propertyBlock.SetFloatArray("_Speed", speeds);
+        Graphics.DrawMeshInstanced(mesh, 0, material, positionsMatrices, particleCount, propertyBlock);
 
     }
 
