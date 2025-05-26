@@ -98,7 +98,6 @@
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\Benchmark03.cs" />
     <Compile Include="Assets\Scripts\2D\NeighbourSearch.cs" />
     <Compile Include="Assets\Scripts\2D\Simulation2D.cs" />
-    <Compile Include="Assets\Scripts\2D\Poly6KernelGraph.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_TextInfoDebugTool.cs" />
   </ItemGroup>
   <ItemGroup>

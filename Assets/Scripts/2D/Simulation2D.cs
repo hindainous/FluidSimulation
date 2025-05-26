@@ -176,7 +176,7 @@ public class Circle : MonoBehaviour
             float sharedPressure = CalculateSharedPressure(density, densities[particleIndex]);
             float nearSharedPressure = CalculateSharedNearPressure(nearDensity, nearDensities[particleIndex]);
             pressureForce += mass * nearSharedPressure * dir / nearDensity;
-            pressureForce += mass * sharedPressure * nearSharedPressure * slope * dir / density;
+            pressureForce += mass * sharedPressure * slope * dir / density;
         }
 
         return pressureForce;
