@@ -2629,11 +2629,11 @@ MonoBehaviour:
   mouseForceStrength: 3
   mouseForceRadius: 5
   mass: 1
-  particleCount: 4800
+  particleCount: 2000
   fixedNeighbour: {fileID: 1865793209}
   gravity: 10
-  boundsSize: {x: 45, y: 20}
-  material: {fileID: 2100000, guid: b5be56c15c0216f41b3f2ef89bef30c2, type: 2}
+  boundsSize: {x: 30, y: 20}
+  material: {fileID: 2100000, guid: a7d0b94cf45582a438e378b31959a792, type: 2}
 --- !u!114 &1865793209
 MonoBehaviour:
   m_ObjectHideFlags: 0
