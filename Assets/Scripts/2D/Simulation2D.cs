@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Threading;
 using System.Drawing;
 using UnityEngine.SceneManagement;
-using static UnityEditor.PlayerSettings;
 using Unity.Mathematics;
 public class Circle : MonoBehaviour
 {
