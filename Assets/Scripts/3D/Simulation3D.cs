@@ -261,7 +261,7 @@ public class Simulation3D : MonoBehaviour
             viscosityForce += (velocity[i] - velocity[particleIndex]) * influence;
         }
 
-        return viscosityForce * viscosityStrength;
+        return viscosityForce * viscosityStrength * deltaTime;
     }
 
     // Old code
@@ -344,7 +344,8 @@ public class Simulation3D : MonoBehaviour
             Vector3 pressureAcceleration = pressureForce / densities[i];
             Vector3 viscosityForce = CalculateViscosityForce(i, neighbours);
 
-            velocity[i] += viscosityForce + pressureAcceleration * deltaTime;
+            velocity[i] += viscosityForce;
+            velocity[i] += pressureAcceleration * deltaTime;
         });
 
 

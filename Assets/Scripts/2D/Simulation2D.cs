@@ -12,7 +12,7 @@ using System.Threading;
 using System.Drawing;
 using UnityEngine.SceneManagement;
 using Unity.Mathematics;
-public class Circle : MonoBehaviour
+public class Simulation2D : MonoBehaviour
 {
     //Time settings
     public float timeScale = 1;
@@ -245,7 +245,7 @@ public class Circle : MonoBehaviour
             viscosityForce += (velocity[i] - velocity[particleIndex]) * influence;
         }
 
-        return viscosityForce * viscosityStrength;
+        return viscosityForce * viscosityStrength * deltaTime;
     }
 
     /*static float SmoothingDensityKernel(float radius, float distance)
@@ -343,7 +343,8 @@ public class Circle : MonoBehaviour
             Vector3 pressureAcceleration = pressureForce / densities[i];
             Vector3 viscosityForce = CalculateViscosityForce(i, neighbours);
 
-            velocity[i] += viscosityForce + pressureAcceleration * deltaTime;
+            velocity[i] += viscosityForce;
+            velocity[i] += pressureAcceleration * deltaTime;
         });
 
 

@@ -6,10 +6,10 @@ using UnityEngine.UI;
 
 public class UIScript : MonoBehaviour
 {
-    public TMP_InputField gravityInput;
-    public TMP_InputField viscosityInput;
-    public TMP_InputField targetDensityInput;
-    public TMP_InputField pressureMultiplierInput;
+    public Slider gravityInput;
+    public Slider viscosityInput;
+    public Slider targetDensityInput;
+    public Slider pressureMultiplierInput;
 
     // Start is called before the first frame update
     void Start()
@@ -19,34 +19,23 @@ public class UIScript : MonoBehaviour
 
     public void ChangeGravity()
     {
-        if(float.TryParse(gravityInput.text, out float result))
-        {
-            gameObject.GetComponent<Circle>().gravity = result;
-        }
+        gameObject.GetComponent<Simulation3D>().gravity = gravityInput.value;
+        gameObject.GetComponent<Simulation2D>().gravity = gravityInput.value;
     }
 
     public void ChangeViscosity()
     {
-        if (float.TryParse(viscosityInput.text, out float result))
-        {
-            gameObject.GetComponent<Circle>().viscosityStrength = result;
-        }
+        gameObject.GetComponent<Simulation2D>().viscosityStrength = viscosityInput.value;
     }
 
     public void ChangeTargetDensity()
     {
-        if (float.TryParse(targetDensityInput.text, out float result))
-        {
-            gameObject.GetComponent<Circle>().targetDensity = result;
-        }
+        gameObject.GetComponent<Simulation2D>().targetDensity = targetDensityInput.value;
     }
 
     public void ChangePressureMultiplier()
     {
-        if (float.TryParse(pressureMultiplierInput.text, out float result))
-        {
-            gameObject.GetComponent<Circle>().pressureMultiplier = result;
-        }
+       gameObject.GetComponent<Simulation2D>().pressureMultiplier = pressureMultiplierInput.value;
     }
 
 
